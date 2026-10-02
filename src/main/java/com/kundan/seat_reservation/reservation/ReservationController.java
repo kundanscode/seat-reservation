@@ -9,13 +9,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/shows")
 public class ReservationController {
 
     private final ReservationService reservationService;
@@ -24,7 +22,7 @@ public class ReservationController {
         this.reservationService = reservationService;
     }
 
-    @PostMapping("/{id}/reserve")
+    @PostMapping("/shows/{id}/reserve")
     public ResponseEntity<ReservationResponse> reserve(
             @PathVariable("id") UUID showId,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
@@ -49,5 +47,19 @@ public class ReservationController {
         } else {
             return ResponseEntity.status(HttpStatus.CREATED).body(result.response());
         }
+    }
+
+    @PostMapping("/reservations/{reservationId}/cancel")
+    public ResponseEntity<ReservationResponse> cancel(
+            @PathVariable("reservationId") UUID reservationId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        if (jwt == null || jwt.getSubject() == null || jwt.getSubject().isBlank()) {
+            throw new IllegalArgumentException("User identity missing in token");
+        }
+
+        String userId = jwt.getSubject();
+        ReservationResponse response = reservationService.cancelReservation(reservationId, userId);
+        return ResponseEntity.ok(response);
     }
 }

@@ -76,4 +76,16 @@ class SchemaMigrationValidationTest {
         assertThat(sql).containsIgnoringCase("ALTER TABLE idempotency_records");
         assertThat(sql).containsIgnoringCase("ALTER TABLE seats");
     }
+
+    @Test
+    @DisplayName("Verify Flyway migration V3 script exists and contains cancelled_at")
+    void testV3MigrationScriptContainsRequiredSchema() throws IOException {
+        ClassPathResource resource = new ClassPathResource("db/migration/V3__add_cancelled_at_to_reservations.sql");
+        assertThat(resource.exists()).isTrue();
+
+        String sql = resource.getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(sql).containsIgnoringCase("cancelled_at");
+        assertThat(sql).containsIgnoringCase("ALTER TABLE reservations");
+    }
 }

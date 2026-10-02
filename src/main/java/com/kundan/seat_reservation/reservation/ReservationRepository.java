@@ -1,6 +1,5 @@
 package com.kundan.seat_reservation.reservation;
 
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -23,6 +22,8 @@ public class ReservationRepository {
     public record ShowPriceAndLimit(long pricePaise, int perUserLimit) {}
     public record IdempotencyRecord(String requestHash, String responseJson) {}
     public record LockedSeat(UUID id, UUID showId, String seatLabel, String status) {}
+    public record ReservationRow(UUID id, UUID showId, String userId, String status, long amountPaise) {}
+    public record ReservationSeatLockRow(UUID id, String seatLabel, String status, UUID currentReservationId) {}
 
     public Optional<ShowPriceAndLimit> findShowPriceAndLimit(UUID showId) {
         String sql = "SELECT price_paise, per_user_limit FROM shows WHERE id = ?";
@@ -131,5 +132,76 @@ public class ReservationRepository {
                 """;
         String requestKey = showId + ":" + userId + ":" + idempotencyKey;
         jdbcTemplate.update(sql, id, showId, userId, idempotencyKey, requestKey, requestHash, reservationId, responseJson);
+    }
+
+    public Optional<ReservationRow> findReservationForUpdate(UUID reservationId) {
+        String sql = "SELECT id, show_id, user_id, status, amount_paise FROM reservations WHERE id = ? FOR UPDATE";
+        List<ReservationRow> results = jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new ReservationRow(
+                        rs.getObject("id", UUID.class),
+                        rs.getObject("show_id", UUID.class),
+                        rs.getString("user_id"),
+                        rs.getString("status"),
+                        rs.getLong("amount_paise")
+                ),
+                reservationId
+        );
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
+
+    public List<String> findSeatLabelsForReservation(UUID reservationId) {
+        String sql = """
+                SELECT s.seat_label
+                FROM reservation_seats rs
+                JOIN seats s ON s.id = rs.seat_id AND s.show_id = rs.show_id
+                WHERE rs.reservation_id = ?
+                ORDER BY s.seat_label ASC
+                """;
+        return jdbcTemplate.queryForList(sql, String.class, reservationId);
+    }
+
+    public List<ReservationSeatLockRow> lockSeatsForReservation(UUID reservationId) {
+        String sql = """
+                SELECT s.id, s.seat_label, s.status, s.current_reservation_id
+                FROM reservation_seats rs
+                JOIN seats s ON s.id = rs.seat_id AND s.show_id = rs.show_id
+                WHERE rs.reservation_id = ?
+                ORDER BY s.seat_label ASC
+                FOR UPDATE OF s
+                """;
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new ReservationSeatLockRow(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("seat_label"),
+                        rs.getString("status"),
+                        rs.getObject("current_reservation_id", UUID.class)
+                ),
+                reservationId
+        );
+    }
+
+    public int releaseSeatsForReservation(UUID reservationId) {
+        String sql = """
+                UPDATE seats
+                SET status = 'AVAILABLE',
+                    current_reservation_id = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE current_reservation_id = ?
+                  AND status = 'CONFIRMED'
+                """;
+        return jdbcTemplate.update(sql, reservationId);
+    }
+
+    public void markReservationCancelled(UUID reservationId) {
+        String sql = """
+                UPDATE reservations
+                SET status = 'CANCELLED',
+                    cancelled_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """;
+        jdbcTemplate.update(sql, reservationId);
     }
 }

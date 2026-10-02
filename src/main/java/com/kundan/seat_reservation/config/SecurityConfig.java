@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/shows/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/shows").hasAuthority("SCOPE_admin")
                         .requestMatchers(HttpMethod.POST, "/shows/*/reserve").hasAuthority("SCOPE_user")
+                        .requestMatchers(HttpMethod.POST, "/reservations/*/cancel").hasAuthority("SCOPE_user")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

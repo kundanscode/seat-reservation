@@ -1,4 +1,4 @@
 app:
   security:
-    jwt-issuer: seat-reservation
-    jwt-secret: "test-jwt-secret-must-be-at-least-32-bytes-long-for-hs256!"
+    jwt-issuer: ${JWT_ISSUER:seat-reservation}
+    jwt-secret: ${JWT_SECRET}

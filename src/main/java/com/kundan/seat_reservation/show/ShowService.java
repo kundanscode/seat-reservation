@@ -21,6 +21,12 @@ public class ShowService {
         this.showRepository = showRepository;
     }
 
+    @Transactional(readOnly = true)
+    public ShowResponse getShow(UUID showId) {
+        return showRepository.findShowByIdWithConsistentCounts(showId)
+                .orElseThrow(() -> new com.kundan.seat_reservation.common.ShowNotFoundException("Show not found: " + showId));
+    }
+
     @Transactional
     public ShowResponse createShow(CreateShowRequest request) {
         if (request.name() == null || request.name().trim().isEmpty()) {

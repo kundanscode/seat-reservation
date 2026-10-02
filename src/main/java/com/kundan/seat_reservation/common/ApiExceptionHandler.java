@@ -55,6 +55,22 @@ public class ApiExceptionHandler {
                 .body(new ApiError("SHOW_NOT_FOUND", ex.getMessage()));
     }
 
+    @ExceptionHandler(ReservationNotFoundException.class)
+    public ResponseEntity<ApiError> handleReservationNotFound(ReservationNotFoundException ex) {
+        log.warn("Reservation not found: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ApiError("RESERVATION_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReservationOwnershipException.class)
+    public ResponseEntity<ApiError> handleReservationOwnership(ReservationOwnershipException ex) {
+        log.warn("Reservation ownership mismatch: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(new ApiError("FORBIDDEN", ex.getMessage()));
+    }
+
     @ExceptionHandler(SeatNotFoundException.class)
     public ResponseEntity<ApiError> handleSeatNotFound(SeatNotFoundException ex) {
         log.warn("Seat not found: {}", ex.getMessage());

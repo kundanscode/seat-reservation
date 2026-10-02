@@ -134,6 +134,63 @@ public class ReservationService {
         return new ReservationResult(response, false);
     }
 
+    @Transactional
+    public ReservationResponse cancelReservation(UUID reservationId, String userId) {
+        if (reservationId == null) {
+            throw new IllegalArgumentException("Reservation ID is required");
+        }
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("User identity missing in token");
+        }
+
+        var reservation = reservationRepository.findReservationForUpdate(reservationId)
+                .orElseThrow(() -> new com.kundan.seat_reservation.common.ReservationNotFoundException("Reservation not found: " + reservationId));
+
+        if (!reservation.userId().equals(userId)) {
+            throw new com.kundan.seat_reservation.common.ReservationOwnershipException("You are not authorized to cancel this reservation");
+        }
+
+        if ("CANCELLED".equalsIgnoreCase(reservation.status())) {
+            List<String> seatLabels = reservationRepository.findSeatLabelsForReservation(reservationId);
+            return new ReservationResponse(
+                    reservation.id(),
+                    reservation.showId(),
+                    reservation.userId(),
+                    seatLabels,
+                    reservation.amountPaise(),
+                    "cancelled"
+            );
+        }
+
+        List<ReservationRepository.ReservationSeatLockRow> lockedSeats = reservationRepository.lockSeatsForReservation(reservationId);
+        if (lockedSeats.isEmpty()) {
+            throw new IllegalStateException("Reservation has no associated seats: " + reservationId);
+        }
+
+        for (ReservationRepository.ReservationSeatLockRow seat : lockedSeats) {
+            if (!"CONFIRMED".equalsIgnoreCase(seat.status()) || !reservationId.equals(seat.currentReservationId())) {
+                throw new IllegalStateException("Seat ownership inconsistent for reservation " + reservationId + ", seat: " + seat.seatLabel());
+            }
+        }
+
+        int releasedCount = reservationRepository.releaseSeatsForReservation(reservationId);
+        if (releasedCount != lockedSeats.size()) {
+            throw new IllegalStateException("Expected to release " + lockedSeats.size() + " seats but released " + releasedCount);
+        }
+
+        reservationRepository.markReservationCancelled(reservationId);
+
+        List<String> seatLabels = lockedSeats.stream().map(ReservationRepository.ReservationSeatLockRow::seatLabel).toList();
+        return new ReservationResponse(
+                reservation.id(),
+                reservation.showId(),
+                reservation.userId(),
+                seatLabels,
+                reservation.amountPaise(),
+                "cancelled"
+        );
+    }
+
     private String computeCanonicalHash(List<String> sortedSeats) {
         try {
             String canonicalJson = objectMapper.writeValueAsString(sortedSeats);
