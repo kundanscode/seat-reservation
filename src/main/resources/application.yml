@@ -28,3 +28,8 @@ management:
           include: readinessState,db
         liveness:
           include: livenessState
+
+app:
+  security:
+    jwt-issuer: seat-reservation
+    jwt-secret: ${JWT_SECRET}

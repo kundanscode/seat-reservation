@@ -10,6 +10,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -34,6 +36,10 @@ class ShowCreationIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    private SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor adminJwt() {
+        return jwt().jwt(j -> j.claim("scope", "admin").subject("admin-1"));
+    }
+
     @Test
     @DisplayName("Creates a show: response is 201, show details and seats are AVAILABLE, counts reconcile, location header set")
     void testCreateShowSuccess() throws Exception {
@@ -47,6 +53,7 @@ class ShowCreationIntegrationTest {
                 """;
 
         MvcResult result = mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isCreated())
@@ -109,6 +116,7 @@ class ShowCreationIntegrationTest {
                 """;
 
         mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isCreated())
@@ -127,6 +135,7 @@ class ShowCreationIntegrationTest {
                 """;
 
         mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isBadRequest())
@@ -139,6 +148,7 @@ class ShowCreationIntegrationTest {
     void testRejectInvalidInputs() throws Exception {
         // Blank name
         mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -152,6 +162,7 @@ class ShowCreationIntegrationTest {
 
         // Empty seats
         mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -165,6 +176,7 @@ class ShowCreationIntegrationTest {
 
         // Blank seat label
         mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -178,6 +190,7 @@ class ShowCreationIntegrationTest {
 
         // Negative price
         mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -191,6 +204,7 @@ class ShowCreationIntegrationTest {
 
         // Non-positive per_user_limit
         mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -219,6 +233,7 @@ class ShowCreationIntegrationTest {
                 """;
 
         mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(duplicateSeatsJson))
                 .andExpect(status().isBadRequest());
@@ -242,6 +257,7 @@ class ShowCreationIntegrationTest {
                 """;
 
         MvcResult result = mockMvc.perform(post("/shows")
+                        .with(adminJwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isCreated())
@@ -250,5 +266,38 @@ class ShowCreationIntegrationTest {
 
         List<String> seatLabels = JsonPath.read(result.getResponse().getContentAsString(), "$.seats[*].seat");
         assertThat(seatLabels).containsExactlyInAnyOrder("A1", "a1");
+    }
+
+    @Test
+    @DisplayName("Rejects show creation when unauthenticated: 401 Unauthorized")
+    void testCreateShowUnauthorized() throws Exception {
+        mockMvc.perform(post("/shows")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "unauthorized-show",
+                                  "seats": ["A1"],
+                                  "price_paise": 1000
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    @DisplayName("Rejects show creation when token has scope 'user': 403 Forbidden")
+    void testCreateShowForbiddenForUser() throws Exception {
+        mockMvc.perform(post("/shows")
+                        .with(jwt().jwt(j -> j.claim("scope", "user").subject("user-1")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "forbidden-show",
+                                  "seats": ["A1"],
+                                  "price_paise": 1000
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 }

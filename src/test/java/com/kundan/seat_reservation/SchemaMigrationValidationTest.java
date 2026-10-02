@@ -62,4 +62,18 @@ class SchemaMigrationValidationTest {
         // Verify show_user_booking_guards unique constraint
         assertThat(sql).containsIgnoringCase("uq_show_user_booking_guards");
     }
+
+    @Test
+    @DisplayName("Verify Flyway migration V2 script exists and contains response_json and current_reservation_id")
+    void testV2MigrationScriptContainsRequiredSchema() throws IOException {
+        ClassPathResource resource = new ClassPathResource("db/migration/V2__store_idempotency_response.sql");
+        assertThat(resource.exists()).isTrue();
+
+        String sql = resource.getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(sql).containsIgnoringCase("response_json");
+        assertThat(sql).containsIgnoringCase("current_reservation_id");
+        assertThat(sql).containsIgnoringCase("ALTER TABLE idempotency_records");
+        assertThat(sql).containsIgnoringCase("ALTER TABLE seats");
+    }
 }
