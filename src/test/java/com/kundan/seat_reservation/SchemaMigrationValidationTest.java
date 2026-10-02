@@ -29,9 +29,9 @@ class SchemaMigrationValidationTest {
 
         // Verify shows table requirements
         assertThat(sql).containsIgnoringCase("price_paise");
-        assertThat(sql).containsIgnoringCase("booking_limit_per_user");
+        assertThat(sql).containsIgnoringCase("per_user_limit");
         assertThat(sql).containsIgnoringCase("price_paise >= 0");
-        assertThat(sql).containsIgnoringCase("booking_limit_per_user > 0");
+        assertThat(sql).containsIgnoringCase("per_user_limit > 0");
 
         // Verify seats table requirements
         assertThat(sql).containsIgnoringCase("seat_label");
