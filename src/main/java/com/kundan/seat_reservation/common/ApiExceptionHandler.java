@@ -71,6 +71,14 @@ public class ApiExceptionHandler {
                 .body(new ApiError("FORBIDDEN", ex.getMessage()));
     }
 
+    @ExceptionHandler(com.kundan.seat_reservation.security.demo.DemoTokenAccessDeniedException.class)
+    public ResponseEntity<ApiError> handleDemoTokenAccessDenied(com.kundan.seat_reservation.security.demo.DemoTokenAccessDeniedException ex) {
+        log.warn("Demo token access denied: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(new ApiError("DEMO_TOKEN_FORBIDDEN", ex.getMessage()));
+    }
+
     @ExceptionHandler(SeatNotFoundException.class)
     public ResponseEntity<ApiError> handleSeatNotFound(SeatNotFoundException ex) {
         log.warn("Seat not found: {}", ex.getMessage());
@@ -117,6 +125,14 @@ public class ApiExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ApiError("INVALID_REQUEST", "Malformed or unreadable request body"));
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiError> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        log.warn("Resource not found: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ApiError("NOT_FOUND", ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

@@ -31,5 +31,5 @@ management:
 
 app:
   security:
-    jwt-issuer: seat-reservation
+    jwt-issuer: ${JWT_ISSUER:seat-reservation}
     jwt-secret: ${JWT_SECRET}
