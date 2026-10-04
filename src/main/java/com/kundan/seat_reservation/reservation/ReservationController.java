@@ -25,14 +25,20 @@ public class ReservationController {
     @PostMapping("/shows/{id}/reserve")
     public ResponseEntity<ReservationResponse> reserve(
             @PathVariable("id") UUID showId,
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKeyHeader,
             @Valid @RequestBody ReserveSeatsRequest request,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
-            throw new IllegalArgumentException("Idempotency-Key header is required");
+        String effectiveKey = (idempotencyKeyHeader != null && !idempotencyKeyHeader.isBlank())
+                ? idempotencyKeyHeader.trim()
+                : (request.idempotencyKey() != null && !request.idempotencyKey().isBlank()
+                        ? request.idempotencyKey().trim()
+                        : null);
+
+        if (effectiveKey == null || effectiveKey.isEmpty()) {
+            throw new IllegalArgumentException("Idempotency key is required (in 'Idempotency-Key' header or 'idempotency_key' request body)");
         }
-        if (idempotencyKey.trim().length() > 200) {
+        if (effectiveKey.length() > 200) {
             throw new IllegalArgumentException("Idempotency-Key must not exceed 200 characters");
         }
         if (jwt == null || jwt.getSubject() == null || jwt.getSubject().isBlank()) {
@@ -40,7 +46,7 @@ public class ReservationController {
         }
 
         String userId = jwt.getSubject();
-        ReservationResult result = reservationService.reserve(showId, userId, idempotencyKey.trim(), request);
+        ReservationResult result = reservationService.reserve(showId, userId, effectiveKey, request);
 
         if (result.replayed()) {
             return ResponseEntity.ok(result.response());

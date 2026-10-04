@@ -694,4 +694,56 @@ class ReservationIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("SHOW_NOT_FOUND"));
     }
+
+    @Test
+    @DisplayName("16. Idempotency key supplied in body (no header) creates reservation and supports exact replay")
+    void testIdempotencyKeyInBody() throws Exception {
+        UUID showId = createShow("show-body-key", List.of("K1"), 15000L, 4);
+
+        // First attempt with key in body
+        MvcResult firstResult = mockMvc.perform(post("/shows/" + showId + "/reserve")
+                .with(userJwt("user-body-key"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "seats": ["K1"],
+                          "idempotency_key": "body-key-101"
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.reservation_id").isNotEmpty())
+                .andExpect(jsonPath("$.seats[0]").value("K1"))
+                .andExpect(jsonPath("$.status").value("confirmed"))
+                .andReturn();
+
+        String resId = JsonPath.read(firstResult.getResponse().getContentAsString(), "$.reservation_id");
+
+        // Replay attempt with same key in body
+        mockMvc.perform(post("/shows/" + showId + "/reserve")
+                .with(userJwt("user-body-key"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "seats": ["K1"],
+                          "idempotency_key": "body-key-101"
+                        }
+                        """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservation_id").value(resId));
+
+        assertReconciliation(showId);
+    }
+
+    @Test
+    @DisplayName("17. Missing idempotency key in both header and body returns 400 Bad Request")
+    void testMissingIdempotencyKeyBothHeaderAndBody() throws Exception {
+        UUID showId = createShow("show-missing-key", List.of("M1"), 10000L, 4);
+
+        mockMvc.perform(post("/shows/" + showId + "/reserve")
+                .with(userJwt("user-nokey"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"seats\": [\"M1\"]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    }
 }
