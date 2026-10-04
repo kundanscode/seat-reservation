@@ -1,5 +1,5 @@
 # Engineering Write-Up: Seat Reservation at Scale
-**Author:** Kundan Kumar  
+**Author:** Kundan Singh
 **Assignment:** Deploy & Observe Round · Backend Engineering, Paytm Money  
 **Repository:** [https://github.com/kundanscode/seat-reservation.git](https://github.com/kundanscode/seat-reservation.git)  
 **Live URL:** `https://seat-reservation-api-kundan.onrender.com`  
@@ -262,6 +262,25 @@ OUTCOME DISTRIBUTION: OVERALL COMBINED BURST
   4. Exact idempotency replay returns same reservation.
   5. Per-user limit (4) strictly held under parallel requests.
   6. Identity verified from auth token.
+```
+
+### Extreme Scale Verification (20,000 Concurrent Requests)
+To verify the system against the assignment's explicit benchmark scenario (*"Assume we fire ~20,000 concurrent reservations at a fresh show"*), [`scripts/burst-20k.py`](./scripts/burst-20k.py) fires 20,000 requests using non-blocking `asyncio` over persistent HTTP Keep-Alive connections:
+
+```text
+================================================================
+OUTCOME DISTRIBUTION: 20,000 REQUEST BURST
+================================================================
+  Total Requests Attempted:    20000
+  Time Elapsed:                12.26 seconds (1631.3 req/sec)
+  Confirmed (201 Created):     1
+  Idempotent Replay (200 OK):  1
+  Declined (409 SEAT_TAKEN):   19998
+  Server Errors (5xx):         0
+  Connection Errors:           0
+----------------------------------------------------------------
+  RECONCILIATION: total=1 == available=0 + held=0 + confirmed=1 -> [HOLDS]
+================================================================
 ```
 
 ---
