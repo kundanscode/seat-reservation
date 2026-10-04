@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: seat-reservation
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:demo}
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/seat_reservation}
     username: ${DB_USERNAME:seat_app}
@@ -38,7 +40,7 @@ management:
 app:
   security:
     jwt-issuer: ${JWT_ISSUER:seat-reservation}
-    jwt-secret: ${JWT_SECRET}
+    jwt-secret: ${JWT_SECRET:test-jwt-secret-must-be-at-least-32-bytes-long-for-hs256!}
 
 logging:
   pattern:

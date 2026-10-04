@@ -1,7 +1,7 @@
 # Engineering Write-Up: Seat Reservation at Scale
 **Author:** Kundan Kumar  
 **Assignment:** Deploy & Observe Round · Backend Engineering, Paytm Money  
-**Repository:** [github.com/kundankumar22/seat-reservation](https://github.com/kundankumar22/seat-reservation)  
+**Repository:** [https://github.com/kundanscode/seat-reservation.git](https://github.com/kundanscode/seat-reservation.git)  
 **Live URL:** `https://seat-reservation-api-kundan.onrender.com`  
 
 ---

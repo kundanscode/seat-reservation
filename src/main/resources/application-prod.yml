@@ -1,0 +1,4 @@
+app:
+  security:
+    demo-token-enabled: false
+    demo-token-key: ""

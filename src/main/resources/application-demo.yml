@@ -1,5 +1,5 @@
 app:
   security:
-    demo-token-enabled: ${DEMO_TOKEN_ENABLED:false}
-    demo-token-key: ${DEMO_TOKEN_KEY:}
+    demo-token-enabled: ${DEMO_TOKEN_ENABLED:true}
+    demo-token-key: ${DEMO_TOKEN_KEY:demo-secret-key-for-local-evaluation}
     demo-token-ttl: 15m
