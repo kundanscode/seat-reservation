@@ -31,7 +31,7 @@ from urllib.request import Request, urlopen
 
 DEFAULT_BASE_URL = "https://seat-reservation-api-kundan.onrender.com"
 DEFAULT_TIMEOUT = 30
-MAX_WORKERS = 25
+MAX_WORKERS = 1000
 
 
 @dataclass
@@ -232,7 +232,7 @@ def concurrent_reservations(
     def run_one(job: tuple[str, str, str, str]):
         user_id, token, key, seat = job
         try:
-            barrier.wait(timeout=15)
+            barrier.wait(timeout=30)
             result = reserve(base_url, show_id, seat, token, key, timeout)
             return user_id, key, result, None
         except Exception as exc:
@@ -431,12 +431,22 @@ def main() -> int:
 
         # 1. Issue tokens
         hot_user_ids = [f"loadtest-hot-{index:03d}" for index in range(1, args.users + 1)]
-        hot_tokens = {
-            user_id: issue_demo_token(base_url, demo_key, user_id, args.timeout)
-            for user_id in hot_user_ids
-        }
         limit_user_id = "loadtest-limit-001"
-        limit_token = issue_demo_token(base_url, demo_key, limit_user_id, args.timeout)
+        jwt_secret = os.environ.get("JWT_SECRET", "").strip()
+        if jwt_secret:
+            hot_tokens = {
+                user_id: generate_local_jwt(jwt_secret, user_id, "user")
+                for user_id in hot_user_ids
+            }
+            limit_token = generate_local_jwt(jwt_secret, limit_user_id, "user")
+        else:
+            with ThreadPoolExecutor(max_workers=min(32, args.users)) as pool:
+                tokens = list(pool.map(
+                    lambda uid: issue_demo_token(base_url, demo_key, uid, args.timeout),
+                    hot_user_ids
+                ))
+                hot_tokens = dict(zip(hot_user_ids, tokens))
+            limit_token = issue_demo_token(base_url, demo_key, limit_user_id, args.timeout)
 
         # 2. Create shows
         hot_show_id = create_show(
