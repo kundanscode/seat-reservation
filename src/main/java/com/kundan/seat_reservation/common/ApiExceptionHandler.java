@@ -1,5 +1,6 @@
 package com.kundan.seat_reservation.common;
 
+import com.kundan.seat_reservation.reservation.ReservationMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,12 @@ import java.util.stream.Collectors;
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+    private final ReservationMetrics reservationMetrics;
+
+    public ApiExceptionHandler(ReservationMetrics reservationMetrics) {
+        this.reservationMetrics = reservationMetrics;
+    }
 
     @ExceptionHandler(DuplicateSeatLabelException.class)
     public ResponseEntity<ApiError> handleDuplicateSeatLabel(DuplicateSeatLabelException ex) {
@@ -82,6 +89,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(SeatNotFoundException.class)
     public ResponseEntity<ApiError> handleSeatNotFound(SeatNotFoundException ex) {
         log.warn("Seat not found: {}", ex.getMessage());
+        reservationMetrics.recordDeclined("seat-not-found");
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(new ApiError("SEAT_NOT_FOUND", ex.getMessage()));
@@ -90,6 +98,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(SeatTakenException.class)
     public ResponseEntity<ApiError> handleSeatTaken(SeatTakenException ex) {
         log.warn("Seat already taken: {}", ex.getMessage());
+        reservationMetrics.recordDeclined("seat-taken");
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(new ApiError("SEAT_TAKEN", ex.getMessage()));
@@ -98,6 +107,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(PerUserLimitExceededException.class)
     public ResponseEntity<ApiError> handlePerUserLimitExceeded(PerUserLimitExceededException ex) {
         log.warn("Per-user limit exceeded: {}", ex.getMessage());
+        reservationMetrics.recordDeclined("per-user-limit");
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(new ApiError("PER_USER_LIMIT_EXCEEDED", ex.getMessage()));
@@ -106,6 +116,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(IdempotencyKeyReusedException.class)
     public ResponseEntity<ApiError> handleIdempotencyKeyReused(IdempotencyKeyReusedException ex) {
         log.warn("Idempotency key reused: {}", ex.getMessage());
+        reservationMetrics.recordDeclined("idempotency-key-reused");
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(new ApiError("IDEMPOTENCY_KEY_REUSED", ex.getMessage()));

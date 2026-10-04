@@ -24,10 +24,12 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final ObjectMapper objectMapper;
+    private final ReservationMetrics reservationMetrics;
 
-    public ReservationService(ReservationRepository reservationRepository, ObjectMapper objectMapper) {
+    public ReservationService(ReservationRepository reservationRepository, ObjectMapper objectMapper, ReservationMetrics reservationMetrics) {
         this.reservationRepository = reservationRepository;
         this.objectMapper = objectMapper;
+        this.reservationMetrics = reservationMetrics;
     }
 
     @Transactional
@@ -80,6 +82,7 @@ public class ReservationService {
             if (!prior.requestHash().equals(canonicalHash)) {
                 throw new IdempotencyKeyReusedException("Idempotency key has already been used with different request parameters");
             }
+            reservationMetrics.recordDeclined("idempotent-replay");
             ReservationResponse cachedResponse = deserializeResponse(prior.responseJson());
             return new ReservationResult(cachedResponse, true);
         }
@@ -131,6 +134,7 @@ public class ReservationService {
                 responseJson
         );
 
+        reservationMetrics.recordConfirmed();
         return new ReservationResult(response, false);
     }
 
