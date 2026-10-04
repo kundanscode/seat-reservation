@@ -33,3 +33,7 @@ app:
   security:
     jwt-issuer: ${JWT_ISSUER:seat-reservation}
     jwt-secret: ${JWT_SECRET}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%t] [req_id=%X{requestId:-none}] %logger{36} : %m%n"
